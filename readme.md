@@ -8,7 +8,7 @@ Specifically, it's capable of restoring:
 
 Important notice
 ---
-Patchguard must be loaded ahead of any rootkits. Currently there's no way to regain tampered bytes from kernel itself.
+Patchguard must be loaded ahead of any rootkits. Currently there's no way to regain tampered bytes anywhere.
 
 Supported and fully tested on:
 ---
