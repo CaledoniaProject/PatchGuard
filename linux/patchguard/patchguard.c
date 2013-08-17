@@ -87,8 +87,8 @@ static void check_hook(unsigned long data)
             sys_call_table[i] = kern_opcode[i].addr;
             WPON;
 
-			// Update pointer address
-			p = (unsigned char*) sys_call_table[i];
+            // Update pointer address
+            p = (unsigned char*) sys_call_table[i];
         }
 
         // Inline hook detection
@@ -105,8 +105,8 @@ static void check_hook(unsigned long data)
                     *p = kern_opcode[i].bytes[j]; ++p;
                 }
                 WPON;
-				
-				continue;
+
+                continue;
             }
         }
     }
