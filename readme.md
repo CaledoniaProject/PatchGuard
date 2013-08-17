@@ -1,6 +1,6 @@
 What's Patchguard?
 ---
-Patchguard protect important system calls from being tampered.
+Patchguard is a kernel module designed to protect critical system calls from being tampered, e.g sys_open, socket_seq_show.
 
 Specifically, it's capable of restoring:
 - SSDT Hooks
