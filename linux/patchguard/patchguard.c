@@ -1,3 +1,20 @@
+/*
+ *  Patchguard - Automated restoration of SSDT Hook and Inline Hook
+ *  Copyright (C) 2013 by Aaron Lewis <the.warl0ck.1989@gmail.com>
+ *
+ *  This program is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ */
 #include <linux/module.h>
 #include <linux/ptrace.h>
 #include <linux/kernel.h>
@@ -36,11 +53,6 @@ struct _kern_opcode
     unsigned char bytes[OPCODE_MAX_BYTES];
 } kern_opcode [NR_syscalls];
 
-static void __exit cleanup(void)
-{
-    del_timer(&patchguard_timer);
-    printk (KERN_INFO "Patchguard removed.\n");
-}
 
 #ifndef CONFIG_64BIT
 static unsigned long *get_syscalls_table(void)
@@ -153,10 +165,15 @@ static int __init startup(void)
     return 0;
 }
 
+static void __exit cleanup(void)
+{
+    del_timer(&patchguard_timer);
+    printk (KERN_INFO "Patchguard removed.\n");
+}
+
 module_init(startup);
 module_exit(cleanup);
 
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Aaron Lewis");
 MODULE_DESCRIPTION("Patchguard Implementation (Linux)");
-
