@@ -5,4 +5,4 @@ Supported OS:
 - FreeBSD 9 +
 
 Features:
-- Automated restoration of Syscall Hooks, Inline Hooks
+- Automated restoration of SSDT Hooks and Inline Hooks

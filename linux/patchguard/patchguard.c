@@ -14,7 +14,7 @@
 #include <linux/workqueue.h>
 #include <asm/unistd.h>
 
-// TODO: dirty hack for Arch, WTF?
+// TODO: dirty hack on Arch, WTF?
 #ifndef NR_syscalls
 #define NR_syscalls 274
 #endif
@@ -24,29 +24,33 @@ static struct timer_list patchguard_timer;
 
 // TODO: incoroprate disas engine
 #define OPCODE_MAX_BYTES 10
-#define PATCHGUARD_CHK_INTERVAL 5000
+#define PATCHGUARD_CHK_INTERVAL 3000
 
 #define WPOFF do { write_cr0(read_cr0() & (~0x10000)); } while (0);
 #define WPON  do { write_cr0(read_cr0() | 0x10000);    } while (0);
 
+// TODO: check sum support
 struct _kern_opcode
 {
     unsigned long addr;
     unsigned char bytes[OPCODE_MAX_BYTES];
 } kern_opcode [NR_syscalls];
 
-////////////////////////////////////
+static void __exit cleanup(void)
+{
+    del_timer(&patchguard_timer);
+    printk (KERN_INFO "Patchguard removed.\n");
+}
 
 #ifndef CONFIG_64BIT
 static unsigned long *get_syscalls_table(void)
 {
     unsigned long *start;
 
-    for (start = (unsigned long *)0xc0000000; start < (unsigned long *)0xffffffff; ++ start)
+    for (start = (unsigned long *)0xc0000000; start < (unsigned long *)0xffffffff; start++)
         if (start[__NR_close] == (unsigned long)sys_close) {
             return start;
         }
-
     return NULL;
 }
 #else
@@ -56,19 +60,16 @@ static unsigned long *get_syscalls_table(void)
 
     for (start = (unsigned long *)0xffffffff810001c8; 
             start < (unsigned long *)0xffffffff81ab41a2; 
-            ++ start)
+            start++)
         if (start[__NR_close] == (unsigned long)sys_close) {
             return start;
         }
-
     return NULL;
 }
 #endif
 
 static void check_hook(unsigned long data)
 {
-//    printk (KERN_INFO "Running checks %d..\n", data);
-
     int i, j;
     unsigned char *p;
 
@@ -80,29 +81,32 @@ static void check_hook(unsigned long data)
         // Verify sys_call_table
         if (sys_call_table[i] != kern_opcode[i].addr)
         {
-            printk (KERN_INFO "Security Alert - syscall hook of %d detected. (restored)\n", i);
+            printk (KERN_INFO "Security Alert - restored SSDT Hook of %d (at %p)\n", i, p);
 
             WPOFF;
             sys_call_table[i] = kern_opcode[i].addr;
             WPON;
 
-            continue;
+			// Update pointer address
+			p = (unsigned char*) sys_call_table[i];
         }
 
         // Inline hook detection
-        for (j = 0; j < OPCODE_MAX_BYTES; ++j)
+        for (j = 0; j < OPCODE_MAX_BYTES; ++j, ++p)
         {
-            if (kern_opcode[i].bytes[j] != *p ++)
+            if (kern_opcode[i].bytes[j] != *p)
             {
-                printk (KERN_INFO "Security Alert - inline hook of %d detected. (restored)\n", i);
-
+                printk (KERN_INFO "Security Alert - restored Inline Hook of %d (at %p)\n", i, p);
                 p = (unsigned char*) sys_call_table[i];
+
+                WPOFF;
                 for (j = 0; j < OPCODE_MAX_BYTES; ++j)
                 {
-                    *p = kern_opcode[i].bytes[j]; ++p;   
+                    *p = kern_opcode[i].bytes[j]; ++p;
                 }
-
-                continue;
+                WPON;
+				
+				continue;
             }
         }
     }
@@ -118,7 +122,6 @@ static int __init startup(void)
     unsigned char *p;
     int i = 0, j = 0;
 
-    // Duplicate opcodes
     sys_call_table = get_syscalls_table();
     if (! sys_call_table)
     {
@@ -137,6 +140,7 @@ static int __init startup(void)
         }
     }
 
+    // TODO: sysctl support
     // Setup timer
     setup_timer(&patchguard_timer, check_hook, 0);
     if (mod_timer (&patchguard_timer, jiffies + msecs_to_jiffies(PATCHGUARD_CHK_INTERVAL)))
@@ -145,19 +149,8 @@ static int __init startup(void)
         return -ECANCELED;
     }
 
-//    p = (unsigned char*)sys_call_table[3];
-//    printk (KERN_INFO "Syscall table at: 0x%lx, bytes: %02x %02x %02x %02x %02x %02x\n", 
-//            sys_call_table, 
-//            *p, *(p+1), *(p+2), *(p+3), *(p+4), *(p+5));
-
     printk (KERN_INFO "Patchguard Initialized.\n");
     return 0;
-}
-
-static void __exit cleanup(void)
-{
-    del_timer(&patchguard_timer);
-    printk (KERN_INFO "Patchguard removed.\n");
 }
 
 module_init(startup);
